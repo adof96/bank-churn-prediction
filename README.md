@@ -12,28 +12,53 @@ customers are likely to leave (churn) so retention efforts can be targeted at th
 - Target: `Exited` (1 = churned) — **20.4% positive class**, a moderate imbalance
 
 ## Methods tried
-1. Preprocessing: dropped rows with missing `Tenure`, one-hot encoded categorical
-   features, scaled numeric features with `StandardScaler`.
-2. Baseline `DecisionTreeClassifier` — used as a sanity check against a
+1. Preprocessing: dropped rows with missing `Tenure` and the identifier columns
+   (`RowNumber`, `CustomerId`, `Surname`), one-hot encoded categorical features,
+   and scaled numeric features with `StandardScaler` fitted on the training set only.
+2. Stratified train / validation / test split (60 / 20 / 20).
+3. Baseline `DecisionTreeClassifier` — used as a sanity check against a
    constant-prediction baseline given the class imbalance.
-3. Class imbalance handling: `class_weight='balanced'`, and manual
+4. Class imbalance handling: `class_weight='balanced'`, and manual
    upsampling/downsampling of the training set.
-4. Models compared: `LogisticRegression` and `RandomForestClassifier`.
-5. Final model: `RandomForestClassifier(n_estimators=150, class_weight='balanced', min_samples_leaf=3)`
-   trained on the upsampled training set.
+5. Models compared on the validation set: decision tree (plain and balanced),
+   `LogisticRegression` and `RandomForestClassifier`, each trained on the original,
+   upsampled and downsampled training sets.
+6. Final model: `RandomForestClassifier(n_estimators=150, class_weight='balanced', min_samples_leaf=3)`
+   trained on the upsampled training set, evaluated once on the test set.
 
 ## Result
-- **F1 = 0.60** on the test set (target was ≥ 0.59)
-- **AUC-ROC = 0.86**
+Test set metrics of the final model (target was F1 ≥ 0.59):
+
+| F1 | AUC-ROC | Recall | Precision |
+|---|---|---|---|
+| **0.635** | **0.855** | 0.650 | 0.621 |
 
 ROC curve and class-balance plots are in [`Figuras/`](Figuras/).
 
+## Project structure
+```
+src/betabank/
+    config.py       # paths, random seed, columns, F1 goal
+    data.py         # loading and cleaning
+    features.py     # one-hot encoding, train/valid/test split, scaling
+    sampling.py     # upsampling and downsampling
+    models.py       # candidate models
+    evaluation.py   # F1, AUC-ROC, recall, precision and model comparison
+    plots.py        # class balance and ROC curve
+main.py               # full pipeline from the command line
+Proyecto_betabank.py  # step-by-step analysis (percent-format notebook)
+tests/                # pytest tests
+```
+
 ## How to run
 ```bash
+python -m venv venvpbb
+venvpbb\Scripts\activate          # Windows (source venvpbb/bin/activate on Linux/macOS)
 pip install -r requirements.txt
+pip install -e .
+
+python main.py   # compares models, evaluates the best one on test, saves Figuras/Roc_curve.png
+pytest           # runs the tests
 ```
 `Proyecto_betabank.py` is a Jupytext "percent-format" script — open it in Jupyter or
-VS Code to run it cell by cell, or execute it directly from the repo root:
-```bash
-python Proyecto_betabank.py
-```
+VS Code (with the `venvpbb` interpreter selected) to run it cell by cell.
